@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BODY TRAINING</title>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16181c;
+    --card: #1e2128;
+    --border: #2a2d35;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --green: #00e676;
+    --orange: #ff9100;
+    --text: #e8eaf0;
+    --muted: #7b8196;
+    --timer-bg: #0a1628;
+    --menu-a: #00e5ff;
+    --menu-b: #c77dff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0d0d0f 0%, #141820 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px);
+  }
+  .logo { font-size: 21px; font-weight: 800; letter-spacing: 4px; color: var(--accent); text-transform: uppercase; }
+  .logo span { color: var(--text); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .badge { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 13px; font-size: 13px; font-weight: 600; }
+  .badge.done { border-color: var(--green); color: var(--green); }
+  .global-progress { height: 3px; background: var(--border); }
+  .global-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; width: 0%; }
+
+  /* ── MAIN ── */
+  main { max-width: 900px; margin: 0 auto; padding: 28px 16px 48px; }
+
+  /* ── WEEKLY SCHEDULE ── */
+  .schedule-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 20px 18px;
+    margin-bottom: 24px;
+  }
+  .schedule-title {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .schedule-title::after { content:''; flex:1; height:1px; background: var(--border); }
+  .week-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  }
+  .day-cell {
+    border-radius: 10px; padding: 10px 4px 8px;
+    text-align: center; cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    transition: all 0.2s;
+    position: relative;
+  }
+  .day-cell:hover { border-color: var(--muted); }
+  .day-cell.menu-a { border-color: rgba(0,229,255,0.35); background: rgba(0,229,255,0.05); }
+  .day-cell.menu-b { border-color: rgba(199,125,255,0.35); background: rgba(199,125,255,0.05); }
+  .day-cell.rest  { border-color: var(--border); }
+  .day-cell.today { box-shadow: 0 0 0 2px currentColor; }
+  .day-cell.today.menu-a { box-shadow: 0 0 0 2px var(--menu-a); color: var(--menu-a); }
+  .day-cell.today.menu-b { box-shadow: 0 0 0 2px var(--menu-b); color: var(--menu-b); }
+  .day-cell.active-view.menu-a { background: rgba(0,229,255,0.12); }
+  .day-cell.active-view.menu-b { background: rgba(199,125,255,0.12); }
+  .day-name { font-size: 10px; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+  .day-cell.today .day-name { color: inherit; font-weight: 700; }
+  .day-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    font-size: 13px; font-weight: 800; letter-spacing: 1px;
+    margin: 0 auto;
+  }
+  .menu-a .day-badge { background: rgba(0,229,255,0.15); color: var(--menu-a); }
+  .menu-b .day-badge { background: rgba(199,125,255,0.15); color: var(--menu-b); }
+  .rest .day-badge  { background: rgba(255,255,255,0.04); color: var(--muted); font-size: 11px; }
+  .today-dot {
+    position: absolute; top: 5px; right: 5px;
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .menu-a .today-dot { background: var(--menu-a); }
+  .menu-b .today-dot { background: var(--menu-b); }
+
+  /* ── MENU TABS ── */
+  .menu-tabs {
+    display: flex; gap: 10px; margin-bottom: 20px;
+  }
+  .menu-tab {
+    flex: 1; padding: 14px 10px; border-radius: 12px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--surface);
+    text-align: center; transition: all 0.2s; user-select: none;
+  }
+  .menu-tab:hover { border-color: var(--muted); }
+  .menu-tab .tab-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .menu-tab .tab-name { font-size: 15px; font-weight: 800; letter-spacing: 1px; }
+  .menu-tab .tab-sub  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .menu-tab.active-a {
+    border-color: var(--menu-a);
+    background: rgba(0,229,255,0.07);
+    box-shadow: 0 0 18px rgba(0,229,255,0.1);
+  }
+  .menu-tab.active-a .tab-name { color: var(--menu-a); }
+  .menu-tab.active-a .tab-label { color: var(--menu-a); opacity: 0.7; }
+  .menu-tab.active-b {
+    border-color: var(--menu-b);
+    background: rgba(199,125,255,0.07);
+    box-shadow: 0 0 18px rgba(199,125,255,0.1);
+  }
+  .menu-tab.active-b .tab-name { color: var(--menu-b); }
+  .menu-tab.active-b .tab-label { color: var(--menu-b); opacity: 0.7; }
+
+  /* menu progress bar in tab */
+  .tab-progress { height: 3px; border-radius: 2px; background: var(--border); margin-top: 8px; overflow: hidden; }
+  .tab-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+  .active-a .tab-progress-fill { background: var(--menu-a); }
+  .active-b .tab-progress-fill { background: var(--menu-b); }
+
+  /* ── EXERCISE PANEL ── */
+  .exercise-panel { display: none; }
+  .exercise-panel.show { display: block; }
+
+  /* ── SECTION LABEL ── */
+  .panel-label {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-label .label-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .panel-a .label-dot { background: var(--menu-a); }
+  .panel-b .label-dot { background: var(--menu-b); }
+  .panel-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* ── EXERCISE CARD ── */
+  .exercise-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s; }
+  .exercise-card.completed { border-color: var(--green); box-shadow: 0 0 18px rgba(0,230,118,0.07); }
+  .exercise-card.active.menu-a-card { border-color: var(--menu-a); box-shadow: 0 0 20px rgba(0,229,255,0.08); }
+  .exercise-card.active.menu-b-card { border-color: var(--menu-b); box-shadow: 0 0 20px rgba(199,125,255,0.08); }
+  .card-header { display: flex; align-items: center; padding: 18px 22px; cursor: pointer; gap: 14px; user-select: none; transition: background 0.2s; }
+  .card-header:hover { background: rgba(255,255,255,0.02); }
+  .exercise-number { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--muted); flex-shrink: 0; transition: all 0.3s; }
+  .exercise-card.completed .exercise-number { background: var(--green); border-color: var(--green); color: #000; }
+  .exercise-card.active.menu-a-card .exercise-number { background: var(--menu-a); border-color: var(--menu-a); color: #000; }
+  .exercise-card.active.menu-b-card .exercise-number { background: var(--menu-b); border-color: var(--menu-b); color: #000; }
+  .card-title-wrap { flex: 1; }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card-meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  .meta-tag { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+  .chevron { width: 18px; height: 18px; color: var(--muted); transition: transform 0.3s; flex-shrink: 0; }
+  .chevron.open { transform: rotate(180deg); }
+  .card-body { display: none; padding: 0 22px 22px; border-top: 1px solid var(--border); }
+  .card-body.open { display: block; }
+
+  /* ── ANIMATION BOX ── */
+  .exercise-anim { background: #0a0c10; border: 1px solid var(--border); border-radius: 10px; margin: 14px 0 4px; overflow: hidden; position: relative; }
+  .exercise-anim svg { width: 100%; height: auto; display: block; }
+  .anim-badge { position: absolute; top: 7px; right: 9px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #3a4055; font-family: system-ui; pointer-events: none; }
+
+  /* SVG shared classes */
+  .af  { fill: none; stroke: #00e5ff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .afd { fill: none; stroke: #00e5ff; stroke-width: 1.8; stroke-linecap: round; opacity: 0.28; }
+  .afg { fill: none; stroke: #00e676; stroke-width: 2; stroke-linecap: round; }
+  .aft { fill: #464d62; font-size: 10px; font-family: system-ui, sans-serif; }
+  .afl { fill: none; stroke: #2a2d35; stroke-width: 1.5; }
+  .pa  { animation: poseA 3.6s ease-in-out infinite; }
+  .pb  { animation: poseB 3.6s ease-in-out infinite; }
+  @keyframes poseA { 0%,25%,90%,100%{opacity:1} 50%,70%{opacity:0} }
+  @keyframes poseB { 0%,25%,90%,100%{opacity:0} 50%,70%{opacity:1} }
+  .arr  { fill: #ff4081; animation: arrPulse 3.6s ease-in-out infinite; }
+  .arrs { fill: none; stroke: #ff4081; stroke-width: 1.6; stroke-linecap: round; animation: arrPulse 3.6s ease-in-out infinite; }
+  @keyframes arrPulse { 0%,25%,90%,100%{opacity:0} 50%,70%{opacity:1} }
+
+  /* ── DESC ── */
+  .desc-section { padding: 4px 0 14px; }
+  .desc-section h4 { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; padding-top: 14px; }
+  .desc-steps { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .desc-steps li { display: flex; gap: 12px; font-size: 14px; line-height: 1.6; color: #c0c4d0; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+  .tips-box { background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.15); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--accent); margin-top: 12px; }
+  .tips-box strong { display: block; margin-bottom: 4px; font-size: 11px; letter-spacing: 1px; }
+
+  /* ── SETS & TIMER ── */
+  .sets-timer-section { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .sets-tracker { flex: 1; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .sets-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .sets-dots { display: flex; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
+  .set-dot { width: 34px; height: 34px; border-radius: 8px; background: var(--card); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+  .set-dot:hover { border-color: var(--accent); color: var(--accent); }
+  .set-dot.done { background: var(--green); border-color: var(--green); color: #000; }
+  .set-dot.done::after { content: '✓'; }
+  .sets-actions { display: flex; gap: 8px; }
+  .btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+  .btn-primary { background: var(--accent); color: #000; flex: 1; }
+  .btn-primary:hover { background: #33eaff; transform: translateY(-1px); }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--muted); }
+  .btn-complete { width: 100%; background: linear-gradient(135deg, var(--green), #00c853); color: #000; margin-top: 12px; padding: 11px; font-size: 14px; letter-spacing: 1px; }
+  .btn-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,230,118,0.3); }
+  .btn-complete:disabled { background: var(--surface); color: var(--muted); transform: none; box-shadow: none; cursor: default; border: 1px solid var(--border); }
+  .btn-undo { background: var(--card); color: var(--accent2); border: 1px solid var(--accent2); font-size: 12px; padding: 6px 12px; }
+  .btn-undo:hover { background: rgba(255,64,129,0.1); }
+  .complete-checkmark { display: none; align-items: center; gap: 10px; padding: 11px 14px; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.3); border-radius: 10px; margin-top: 12px; font-size: 14px; font-weight: 700; color: var(--green); }
+  .complete-checkmark.show { display: flex; }
+  .complete-checkmark svg { width: 20px; height: 20px; }
+
+  /* TIMER */
+  .timer-box { flex: 1; min-width: 190px; background: var(--timer-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; align-items: center; }
+  .timer-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; align-self: flex-start; }
+  .timer-display { font-size: 44px; font-weight: 800; letter-spacing: 2px; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 10px; font-family: 'Courier New', monospace; }
+  .timer-display.done-color { color: var(--green); }
+  .timer-ring { width: 76px; height: 76px; margin: 0 auto 10px; }
+  .timer-ring circle { fill: none; stroke-width: 5; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .timer-ring .track { stroke: var(--border); }
+  .timer-ring .fill { stroke: var(--accent); stroke-dasharray: 220; stroke-dashoffset: 0; transition: stroke-dashoffset 0.5s linear, stroke 0.3s; }
+  .timer-status { font-size: 12px; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px; }
+  .timer-controls { display: flex; gap: 8px; width: 100%; }
+  .btn-timer { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+  .btn-timer:hover { border-color: var(--accent); }
+  .btn-timer.start { background: var(--accent); border-color: var(--accent); }
+  .btn-timer.start:hover { background: #33eaff; }
+  .interval-select-wrap { display: flex; gap: 5px; margin-top: 9px; width: 100%; flex-wrap: wrap; }
+  .interval-btn { flex: 1; min-width: 42px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 5px 3px; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.2s; text-align: center; }
+  .interval-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .interval-btn.selected { background: rgba(0,229,255,0.12); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  /* ALL DONE */
+  .all-done-banner { display: none; background: linear-gradient(135deg, #0a2010, #0d1a0d); border: 1px solid var(--green); border-radius: 16px; padding: 30px; text-align: center; margin-top: 28px; box-shadow: 0 0 36px rgba(0,230,118,0.12); }
+  .all-done-banner.show { display: block; }
+  .all-done-banner h3 { font-size: 26px; font-weight: 800; color: var(--green); letter-spacing: 3px; margin-bottom: 6px; }
+  .all-done-banner p { color: var(--muted); font-size: 14px; }
+  .reset-all-btn { margin-top: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 22px; color: var(--text); font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .reset-all-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* NOTIFICATION */
+  #notification { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 11px 22px; font-size: 14px; font-weight: 600; color: var(--accent); transition: transform 0.3s ease; z-index: 999; white-space: nowrap; }
+  #notification.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 600px) {
+    .week-grid { gap: 4px; }
+    .day-badge { width: 24px; height: 24px; font-size: 12px; }
+    .card-header { padding: 14px 16px; }
+    .card-body { padding: 0 14px 18px; }
+    .timer-display { font-size: 36px; }
+    .sets-timer-section { flex-direction: column; }
+    .menu-tab .tab-sub { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="global-progress"><div class="global-progress-fill" id="globalFill"></div></div>
+
+<header>
+  <div class="logo">BODY<span>WORK</span></div>
+  <div class="header-right">
+    <span id="progressText" style="font-size:13px;color:var(--muted)">0 / 4 完了</span>
+    <span class="badge" id="progressBadge">0%</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── WEEKLY SCHEDULE ── -->
+  <div class="schedule-card">
+    <div class="schedule-title">週間スケジュール</div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- ── MENU TABS ── -->
+  <div class="menu-tabs">
+    <div class="menu-tab" id="tab-a" onclick="switchMenu('a')">
+      <div class="tab-label">MENU A</div>
+      <div class="tab-name">体幹強化</div>
+      <div class="tab-sub">月・水・金</div>
+      <div class="tab-progress"><div class="tab-progress-fill" id="prog-a"></div></div>
+    </div>
+    <div class="menu-tab" id="tab-b" onclick="switchMenu('b')">
+      <div class="tab-label">MENU B</div>
+      <div class="tab-name">股関節・全身連動</div>
+      <div class="tab-sub">火・木・土</div>
+      <div class="tab-progress"><div class="tab-progress-fill" id="prog-b"></div></div>
+    </div>
+  </div>
+
+  <!-- ── PANEL A ── -->
+  <div class="exercise-panel panel-a" id="panel-a">
+    <div class="panel-label"><span class="label-dot"></span>MENU A — 体幹強化</div>
+    <div id="list-a"></div>
+    <div class="all-done-banner" id="done-a">
+      <h3>MENU A COMPLETE</h3>
+      <p>体幹強化メニューを完了しました！</p>
+      <button class="reset-all-btn" onclick="resetMenu('a')">もう一度やる</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL B ── -->
+  <div class="exercise-panel panel-b" id="panel-b">
+    <div class="panel-label"><span class="label-dot"></span>MENU B — 股関節・全身連動</div>
+    <div id="list-b"></div>
+    <div class="all-done-banner" id="done-b">
+      <h3>MENU B COMPLETE</h3>
+      <p>股関節・全身連動メニューを完了しました！</p>
+      <button class="reset-all-btn" onclick="resetMenu('b')">もう一度やる</button>
+    </div>
+  </div>
+
+</main>
+
+<div id="notification"></div>
+
+<script>
+/* ── SVG Animations ── */
+const ANIMS = {
+deadbug: `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<circle cx="28" cy="105" r="11" class="af"/>
+<line x1="39" y1="105" x2="128" y2="105" class="af"/>
+<g class="pa">
+  <line x1="66" y1="105" x2="66" y2="76" class="af"/>
+  <line x1="94" y1="105" x2="94" y2="76" class="afd"/>
+  <line x1="128" y1="105" x2="128" y2="79" class="af"/>
+  <line x1="128" y1="79" x2="156" y2="79" class="af"/>
+  <line x1="128" y1="105" x2="130" y2="81" class="afd"/>
+  <line x1="130" y1="81" x2="158" y2="81" class="afd"/>
+</g>
+<g class="pb">
+  <line x1="66" y1="105" x2="66" y2="119" class="af"/>
+  <line x1="94" y1="105" x2="94" y2="76" class="afd"/>
+  <line x1="128" y1="105" x2="215" y2="105" class="af"/>
+  <line x1="128" y1="105" x2="130" y2="81" class="afd"/>
+  <line x1="130" y1="81" x2="158" y2="81" class="afd"/>
+</g>
+<polygon class="arr" points="62,116 66,122 70,116"/>
+<line x1="66" y1="108" x2="66" y2="116" class="arrs"/>
+<polygon class="arr" points="211,101 219,105 211,109"/>
+<line x1="190" y1="105" x2="212" y2="105" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">腕を下ろし ／ 対側の脚を伸ばす</text>
+</svg>`,
+
+birddog: `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="115" x2="270" y2="115" class="afl"/>
+<circle cx="60" cy="72" r="12" class="af"/>
+<line x1="72" y1="72" x2="93" y2="72" class="af"/>
+<line x1="93" y1="72" x2="93" y2="115" class="af"/>
+<line x1="93" y1="72" x2="190" y2="72" class="af"/>
+<line x1="190" y1="72" x2="190" y2="115" class="af"/>
+<g class="pa">
+  <line x1="190" y1="72" x2="205" y2="92" class="afd"/>
+  <line x1="93" y1="72" x2="80" y2="90" class="afd"/>
+</g>
+<g class="pb">
+  <line x1="93" y1="72" x2="32" y2="72" class="af"/>
+  <line x1="190" y1="72" x2="252" y2="72" class="af"/>
+</g>
+<polygon class="arr" points="28,68 22,72 28,76"/>
+<line x1="50" y1="72" x2="26" y2="72" class="arrs"/>
+<polygon class="arr" points="252,68 258,72 252,76"/>
+<line x1="228" y1="72" x2="254" y2="72" class="arrs"/>
+<text x="140" y="136" class="aft" text-anchor="middle">対側の腕を前・脚を後ろへ伸ばす</text>
+</svg>`,
+
+'single-glute': `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<circle cx="28" cy="105" r="11" class="af"/>
+<g class="pa">
+  <line x1="39" y1="105" x2="108" y2="105" class="af"/>
+  <line x1="108" y1="105" x2="145" y2="85" class="af"/>
+  <line x1="145" y1="85" x2="165" y2="120" class="af"/>
+  <line x1="108" y1="105" x2="148" y2="87" class="afd"/>
+  <line x1="148" y1="87" x2="168" y2="120" class="afd"/>
+</g>
+<g class="pb">
+  <line x1="39" y1="105" x2="58" y2="105" class="af"/>
+  <line x1="58" y1="105" x2="105" y2="79" class="af"/>
+  <line x1="105" y1="79" x2="148" y2="90" class="af"/>
+  <line x1="148" y1="90" x2="165" y2="120" class="af"/>
+  <line x1="105" y1="79" x2="195" y2="79" class="afd"/>
+</g>
+<polygon class="arr" points="96,67 105,61 114,67"/>
+<line x1="105" y1="100" x2="105" y2="65" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">お尻を真上に持ち上げる</text>
+</svg>`,
+
+'side-plank': `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<circle cx="65" cy="120" r="4" fill="#00e5ff" opacity="0.5"/>
+<g class="pa">
+  <line x1="65" y1="120" x2="90" y2="82" class="af"/>
+  <line x1="90" y1="82" x2="155" y2="108" class="af"/>
+  <line x1="155" y1="108" x2="218" y2="94" class="af"/>
+  <line x1="218" y1="94" x2="222" y2="120" class="af"/>
+  <circle cx="98" cy="72" r="11" class="af"/>
+</g>
+<g class="pb">
+  <line x1="65" y1="120" x2="90" y2="82" class="af"/>
+  <line x1="90" y1="82" x2="222" y2="82" class="afg"/>
+  <line x1="222" y1="82" x2="222" y2="120" class="afg"/>
+  <circle cx="98" cy="72" r="11" class="afg"/>
+  <line x1="98" y1="72" x2="98" y2="83" class="afg"/>
+</g>
+<polygon class="arr" points="147,95 155,88 163,95"/>
+<line x1="155" y1="108" x2="155" y2="92" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">腰を上げて頭からかかとを一直線に</text>
+</svg>`,
+
+'hip-stretch': `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<line x1="140" y1="108" x2="195" y2="108" class="af"/>
+<line x1="195" y1="108" x2="195" y2="120" class="af"/>
+<line x1="140" y1="108" x2="90" y2="108" class="afd"/>
+<line x1="90" y1="108" x2="88" y2="120" class="afd"/>
+<g class="pa">
+  <line x1="140" y1="108" x2="140" y2="58" class="af"/>
+  <circle cx="140" cy="48" r="11" class="af"/>
+  <line x1="140" y1="72" x2="118" y2="88" class="af"/>
+  <line x1="140" y1="72" x2="162" y2="88" class="afd"/>
+</g>
+<g class="pb">
+  <line x1="140" y1="108" x2="168" y2="65" class="af"/>
+  <circle cx="173" cy="55" r="11" class="af"/>
+  <line x1="152" y1="88" x2="190" y2="100" class="af"/>
+  <line x1="152" y1="88" x2="135" y2="78" class="afd"/>
+</g>
+<polygon class="arr" points="162,72 168,64 174,70"/>
+<line x1="148" y1="92" x2="165" y2="68" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">背筋を伸ばしたまま前傾する</text>
+</svg>`,
+
+spiderman: `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<line x1="68" y1="120" x2="110" y2="82" class="af"/>
+<line x1="110" y1="82" x2="148" y2="82" class="af"/>
+<line x1="148" y1="82" x2="170" y2="120" class="af"/>
+<line x1="52" y1="120" x2="68" y2="120" class="afd"/>
+<line x1="148" y1="82" x2="150" y2="50" class="af"/>
+<circle cx="150" cy="40" r="11" class="af"/>
+<g class="pa">
+  <line x1="148" y1="62" x2="162" y2="82" class="af"/>
+</g>
+<g class="pb">
+  <line x1="148" y1="62" x2="122" y2="32" class="afg"/>
+  <circle cx="122" cy="32" r="4" fill="#00e676"/>
+</g>
+<polygon class="arr" points="118,26 122,18 126,26"/>
+<line x1="148" y1="62" x2="122" y2="26" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">手を天井に向けて胸椎を回旋する</text>
+</svg>`,
+
+cossack: `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<g class="pa">
+  <circle cx="140" cy="28" r="13" class="af"/>
+  <line x1="140" y1="41" x2="140" y2="78" class="af"/>
+  <line x1="140" y1="60" x2="116" y2="78" class="af"/>
+  <line x1="140" y1="60" x2="164" y2="78" class="afd"/>
+  <line x1="140" y1="78" x2="96" y2="104" class="af"/>
+  <line x1="96" y1="104" x2="58" y2="120" class="af"/>
+  <line x1="140" y1="78" x2="184" y2="104" class="afd"/>
+  <line x1="184" y1="104" x2="222" y2="120" class="afd"/>
+</g>
+<g class="pb">
+  <circle cx="88" cy="54" r="13" class="af"/>
+  <line x1="88" y1="67" x2="92" y2="90" class="af"/>
+  <line x1="88" y1="76" x2="60" y2="88" class="af"/>
+  <line x1="88" y1="76" x2="115" y2="86" class="afd"/>
+  <line x1="92" y1="90" x2="62" y2="110" class="af"/>
+  <line x1="62" y1="110" x2="58" y2="120" class="af"/>
+  <line x1="92" y1="90" x2="205" y2="105" class="afd"/>
+  <line x1="205" y1="105" x2="222" y2="120" class="afd"/>
+</g>
+<polygon class="arr" points="85,42 88,33 91,42"/>
+<polygon class="arr" points="106,50 114,55 107,61"/>
+<text x="140" y="138" class="aft" text-anchor="middle">重心を横に移動し片側に深くしゃがむ</text>
+</svg>`,
+
+'wall-angel': `<svg viewBox="0 0 280 148" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="280" height="148" fill="#0d0e12"/>
+<line x1="10" y1="120" x2="270" y2="120" class="afl"/>
+<circle cx="140" cy="28" r="13" class="af"/>
+<line x1="140" y1="41" x2="140" y2="85" class="af"/>
+<line x1="140" y1="85" x2="112" y2="120" class="af"/>
+<line x1="140" y1="85" x2="168" y2="120" class="afd"/>
+<g class="pa">
+  <line x1="126" y1="55" x2="98" y2="62" class="af"/>
+  <line x1="98" y1="62" x2="96" y2="42" class="af"/>
+  <line x1="154" y1="55" x2="182" y2="62" class="afd"/>
+  <line x1="182" y1="62" x2="184" y2="42" class="afd"/>
+</g>
+<g class="pb">
+  <line x1="126" y1="55" x2="96" y2="24" class="afg"/>
+  <line x1="154" y1="55" x2="184" y2="24" class="afg"/>
+</g>
+<polygon class="arr" points="92,18 96,10 100,18"/>
+<line x1="96" y1="40" x2="96" y2="14" class="arrs"/>
+<polygon class="arr" points="180,18 184,10 188,18"/>
+<line x1="184" y1="40" x2="184" y2="14" class="arrs"/>
+<text x="140" y="138" class="aft" text-anchor="middle">壁から離さず腕をYの字に上げる</text>
+</svg>`
+};
+
+/* ── Exercise Data ── */
+const MENU = {
+  a: [
+    {
+      id: 'deadbug', name: 'デッドバグ', sets: 3, reps: '10回（左右交互）', muscle: 'コア・体幹安定', rest: 60,
+      steps: ['仰向けに寝て、両腕を天井に向けて垂直に上げる','両膝を90度に曲げ、股関節も90度にして足を浮かせる','腰を床に押しつけたまま、右腕と左脚を同時にゆっくり伸ばす','元の位置に戻し、反対側（左腕・右脚）を同様に行う','腰が反らないよう常に体幹に力を入れておく'],
+      tip: '腰が床から浮いたらその時点で止める。動作はゆっくり4秒かけて行う。'
+    },
+    {
+      id: 'birddog', name: 'バードドッグ', sets: 3, reps: '10回（左右各5回）', muscle: '体幹・臀部・背筋', rest: 60,
+      steps: ['四つん這いになり、手首は肩の真下、膝は股関節の真下に置く','背中をフラットに保ち、腹部を軽く引き締める','右腕を前に、左脚を後ろに同時にゆっくり伸ばす','体が水平になるまで上げ、2秒キープ','元に戻し、逆側（左腕・右脚）を行う。骨盤が傾かないよう注意'],
+      tip: '動作中に腰をねじったり骨盤が傾かないよう意識する。目線は床へ。'
+    },
+    {
+      id: 'single-glute', name: '片脚グルートブリッジ', sets: 3, reps: '各脚10回', muscle: '臀部・ハムストリング', rest: 60,
+      steps: ['仰向けに寝て、両膝を曲げ足裏を床につける','片脚を伸ばして浮かせるか、もう一方の膝の上に乗せる','支持側の足で床を押しながら、お尻を真上に持ち上げる','股関節が完全に伸びる高さまで上げ、1秒キープ','ゆっくり下ろす。全セット同じ脚で終わったら脚を替える'],
+      tip: '上げる際に体幹が崩れないよう腹部に力を入れる。膝が内側に入らないよう注意。'
+    },
+    {
+      id: 'side-plank', name: 'サイドプランク', sets: 3, reps: '各側30〜45秒', muscle: '側体幹・腹斜筋', rest: 45,
+      steps: ['横向きに寝て、肘を肩の真下に置く','足は重ねるか（難易度高）、片方を前に出してスタンスを広げる','お尻を床から浮かせ、頭からかかとまで一直線を作る','腰が下がらないよう体幹全体に力を入れてキープ','規定時間保持したら反対側も同様に行う'],
+      tip: '腰が落ちてきたらフォームを優先して時間を短くする。呼吸は止めない。'
+    }
+  ],
+  b: [
+    {
+      id: 'hip-stretch', name: '90/90ヒップストレッチ', sets: 2, reps: '各側60秒キープ', muscle: '股関節・梨状筋', rest: 30,
+      steps: ['床に座り、前の脚を90度に曲げて外側に置く（前膝・後ろ膝ともに90度）','後ろの脚も90度に曲げ、外側に開く（股関節の内旋）','骨盤を立て、背筋を伸ばした姿勢を作る','前の脚の股関節に向かって、上半身をゆっくり前傾させる','伸びを感じたところで止め、深呼吸しながらキープ。反対側も同様に'],
+      tip: '痛みがある場合は無理に前傾しない。骨盤が歪まないよう座り直しながら行う。'
+    },
+    {
+      id: 'spiderman', name: 'スパイダーマンランジ + 胸椎ローテーション', sets: 3, reps: '左右各5回', muscle: '股関節・胸椎・全身', rest: 60,
+      steps: ['腕立て伏せの姿勢（プランク）から始める','右足を右手の外側に大きく踏み出す（右ランジ）','右肘を床方向に下げ、股関節をほぐす','次に右手を天井に向けて上げながら、胸椎を右にローテーション','元に戻し、左足を左手の外側に踏み出して同様に行う'],
+      tip: '胸椎回旋の際に腰が回らないよう注意。息を吐きながら回転すると可動域が広がる。'
+    },
+    {
+      id: 'cossack', name: 'コサックスクワット', sets: 3, reps: '各側10回', muscle: '股関節・内転筋・下肢', rest: 60,
+      steps: ['足を肩幅の約1.5〜2倍に広げて立つ','片側に体重をかけながら、その方向に腰を下げていく','伸ばす側の脚は真っ直ぐ伸ばし、足先は天井に向ける','曲げる側の膝はつま先の方向に追わせ、かかとをつけたままにする','しっかり下まで降りたら元に戻し、逆側を行う'],
+      tip: 'かかとが浮く場合はヒールエレベーション（薄いプレートをかかとの下に置く）を使用。'
+    },
+    {
+      id: 'wall-angel', name: 'ウォールエンジェル', sets: 3, reps: '10〜15回', muscle: '肩甲帯・胸椎・姿勢改善', rest: 45,
+      steps: ['壁に背中をぴったりつけて立つ（お尻・背中・後頭部を壁に接触）','両腕を壁につけながら「W」の形（肘90度）に持ち上げる','壁から離さないように注意しながら、両腕を上に滑らせていく','完全に上げた位置（「Y」の形）でキープ後、元に戻す','腰が壁から浮かないよう、腹部に力を入れながら動作する'],
+      tip: '腕が壁から離れる前の位置で止めてOK。無理に上げると代償動作が出る。'
+    }
+  ]
+};
+
+/* ── State ── */
+const state = {
+  completed: { a: new Set(), b: new Set() },
+  sets: {},
+  currentMenu: 'a'
+};
+['a','b'].forEach(m => MENU[m].forEach(ex => { state.sets[ex.id] = { done: 0, total: ex.sets }; }));
+
+const timerState = {};
+['a','b'].forEach(m => MENU[m].forEach(ex => {
+  timerState[ex.id] = { running: false, remaining: ex.rest, total: ex.rest, interval: null };
+}));
+
+/* ── Weekly Schedule ── */
+const DAYS = ['月','火','水','木','金','土','日'];
+const DAY_MENU = ['a','b','a','b','a','b','rest']; // Mon=0 … Sun=6
+
+function buildWeekGrid() {
+  const grid = document.getElementById('weekGrid');
+  const today = new Date();
+  // JS: 0=Sun,1=Mon,...,6=Sat → convert to Mon=0
+  const jsDay = today.getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+
+  grid.innerHTML = '';
+  DAYS.forEach((d, i) => {
+    const m = DAY_MENU[i];
+    const cell = document.createElement('div');
+    cell.className = `day-cell ${m === 'a' ? 'menu-a' : m === 'b' ? 'menu-b' : 'rest'}`;
+    if (i === todayIdx) cell.classList.add('today');
+    cell.innerHTML = `
+      ${i === todayIdx ? '<div class="today-dot"></div>' : ''}
+      <div class="day-name">${d}</div>
+      <div class="day-badge">${m === 'a' ? 'A' : m === 'b' ? 'B' : '休'}</div>
+    `;
+    if (m !== 'rest') {
+      cell.style.cursor = 'pointer';
+      cell.addEventListener('click', () => switchMenu(m));
+    }
+    grid.appendChild(cell);
+  });
+  updateActiveViewDay();
+}
+
+function updateActiveViewDay() {
+  document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('active-view'));
+  const cells = document.querySelectorAll('.day-cell');
+  DAYS.forEach((_, i) => {
+    if (DAY_MENU[i] === state.currentMenu) cells[i].classList.add('active-view');
+  });
+}
+
+/* ── Build Card HTML ── */
+function buildCard(ex, menuKey) {
+  const dotHTML = Array.from({length: ex.sets}, (_, i) =>
+    `<div class="set-dot" id="dot-${ex.id}-${i}" onclick="toggleSet('${ex.id}',${i},'${menuKey}')">${i+1}</div>`
+  ).join('');
+
+  return `
+    <div class="exercise-card menu-${menuKey}-card" id="card-${ex.id}">
+      <div class="card-header" onclick="toggleCard('${ex.id}','${menuKey}')">
+        <div class="exercise-number" id="num-${ex.id}">
+          ${MENU[menuKey].indexOf(ex) + 1}
+        </div>
+        <div class="card-title-wrap">
+          <div class="card-title">${ex.name}</div>
+          <div class="card-meta">
+            <span class="meta-tag">${ex.reps}</span>
+            <span class="meta-tag">${ex.muscle}</span>
+            <span class="meta-tag">${ex.sets}セット</span>
+          </div>
+        </div>
+        <svg class="chevron" id="chev-${ex.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="card-body" id="body-${ex.id}">
+        <div class="desc-section">
+          <h4>動作イメージ</h4>
+          <div class="exercise-anim">${ANIMS[ex.id] || ''}<span class="anim-badge">ANIMATION</span></div>
+          <h4>やり方</h4>
+          <ol class="desc-steps">
+            ${ex.steps.map((s,i) => `<li><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}
+          </ol>
+          <div class="tips-box"><strong>POINT</strong>${ex.tip}</div>
+        </div>
+        <div class="sets-timer-section">
+          <div class="sets-tracker">
+            <div class="sets-label">セット管理</div>
+            <div class="sets-dots" id="dots-${ex.id}">${dotHTML}</div>
+            <div class="sets-actions">
+              <button class="btn btn-primary" onclick="completeNextSet('${ex.id}','${menuKey}')">次のセット完了</button>
+              <button class="btn btn-secondary" onclick="resetSets('${ex.id}')">リセット</button>
+            </div>
+            <button class="btn btn-complete" id="complete-btn-${ex.id}" onclick="markDone('${ex.id}','${menuKey}')" disabled>
+              ✓ この種目を完了
+            </button>
+            <div class="complete-checkmark" id="check-${ex.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/>
+              </svg>
+              完了済み
+              <button class="btn btn-undo" style="margin-left:auto" onclick="undoDone('${ex.id}','${menuKey}')">取り消し</button>
+            </div>
+          </div>
+          <div class="timer-box">
+            <div class="timer-label">インターバルタイマー</div>
+            <svg class="timer-ring" viewBox="0 0 80 80">
+              <circle class="track" cx="40" cy="40" r="35"/>
+              <circle class="fill" id="ring-fill-${ex.id}" cx="40" cy="40" r="35"/>
+            </svg>
+            <div class="timer-display" id="timer-${ex.id}">00:${String(ex.rest).padStart(2,'0')}</div>
+            <div class="timer-status" id="timer-status-${ex.id}">REST INTERVAL</div>
+            <div class="timer-controls">
+              <button class="btn-timer start" id="timer-start-${ex.id}" onclick="startTimer('${ex.id}')">▶</button>
+              <button class="btn-timer" onclick="resetTimer('${ex.id}')">↺</button>
+            </div>
+            <div class="interval-select-wrap">
+              ${[30,45,60,90,120].map(s =>
+                `<div class="interval-btn ${s===ex.rest?'selected':''}" id="ibtn-${ex.id}-${s}" onclick="setInterval_('${ex.id}',${s})">${s}s</div>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildLists() {
+  ['a','b'].forEach(m => {
+    document.getElementById('list-' + m).innerHTML =
+      MENU[m].map(ex => buildCard(ex, m)).join('');
+  });
+  ['a','b'].forEach(m => MENU[m].forEach(ex => updateTimerDisplay(ex.id)));
+}
+
+/* ── Menu Switch ── */
+function switchMenu(m) {
+  state.currentMenu = m;
+  document.getElementById('panel-a').classList.toggle('show', m === 'a');
+  document.getElementById('panel-b').classList.toggle('show', m === 'b');
+  document.getElementById('tab-a').className = 'menu-tab' + (m === 'a' ? ' active-a' : '');
+  document.getElementById('tab-b').className = 'menu-tab' + (m === 'b' ? ' active-b' : '');
+  updateProgress(m);
+  updateActiveViewDay();
+}
+
+/* ── Card Toggle ── */
+function toggleCard(id, menuKey) {
+  const body = document.getElementById('body-' + id);
+  const chev = document.getElementById('chev-' + id);
+  const card = document.getElementById('card-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+  if (!isOpen) card.classList.add('active');
+  else if (!state.completed[menuKey].has(id)) card.classList.remove('active');
+}
+
+/* ── Sets ── */
+function toggleSet(id, idx, menuKey) {
+  const dot = document.getElementById(`dot-${id}-${idx}`);
+  if (dot.classList.contains('done')) {
+    dot.classList.remove('done'); dot.textContent = idx + 1;
+    state.sets[id].done = Math.max(0, state.sets[id].done - 1);
+  } else {
+    dot.classList.add('done'); dot.textContent = '';
+    state.sets[id].done = Math.min(state.sets[id].total, state.sets[id].done + 1);
+    startTimer(id);
+  }
+  checkCompleteBtn(id, menuKey);
+}
+
+function completeNextSet(id, menuKey) {
+  const s = state.sets[id];
+  if (s.done >= s.total) return;
+  const dot = document.getElementById(`dot-${id}-${s.done}`);
+  dot.classList.add('done'); dot.textContent = '';
+  s.done++;
+  checkCompleteBtn(id, menuKey);
+  startTimer(id);
+}
+
+function resetSets(id) {
+  const s = state.sets[id];
+  for (let i = 0; i < s.total; i++) {
+    const d = document.getElementById(`dot-${id}-${i}`);
+    d.classList.remove('done'); d.textContent = i + 1;
+  }
+  s.done = 0;
+}
+
+function checkCompleteBtn(id, menuKey) {
+  const btn = document.getElementById('complete-btn-' + id);
+  if (!state.completed[menuKey].has(id))
+    btn.disabled = state.sets[id].done < state.sets[id].total;
+}
+
+/* ── Complete / Undo ── */
+function markDone(id, menuKey) {
+  if (state.completed[menuKey].has(id)) return;
+  state.completed[menuKey].add(id);
+  const card = document.getElementById('card-' + id);
+  card.classList.remove('active'); card.classList.add('completed');
+  document.getElementById('complete-btn-' + id).style.display = 'none';
+  document.getElementById('check-' + id).classList.add('show');
+  updateProgress(menuKey);
+  const name = MENU[menuKey].find(e => e.id === id).name;
+  showNotification('✓ ' + name + ' 完了！');
+  if (state.completed[menuKey].size === MENU[menuKey].length)
+    setTimeout(() => document.getElementById('done-' + menuKey).classList.add('show'), 600);
+}
+
+function undoDone(id, menuKey) {
+  state.completed[menuKey].delete(id);
+  const card = document.getElementById('card-' + id);
+  card.classList.remove('completed');
+  if (document.getElementById('body-' + id).classList.contains('open')) card.classList.add('active');
+  document.getElementById('complete-btn-' + id).style.display = '';
+  checkCompleteBtn(id, menuKey);
+  document.getElementById('check-' + id).classList.remove('show');
+  document.getElementById('done-' + menuKey).classList.remove('show');
+  updateProgress(menuKey);
+}
+
+function resetMenu(menuKey) {
+  state.completed[menuKey].clear();
+  MENU[menuKey].forEach(ex => {
+    state.sets[ex.id].done = 0;
+    resetSets(ex.id);
+    resetTimer(ex.id);
+    const card = document.getElementById('card-' + ex.id);
+    card.classList.remove('completed', 'active');
+    document.getElementById('complete-btn-' + ex.id).style.display = '';
+    document.getElementById('check-' + ex.id).classList.remove('show');
+    document.getElementById('body-' + ex.id).classList.remove('open');
+    document.getElementById('chev-' + ex.id).classList.remove('open');
+    checkCompleteBtn(ex.id, menuKey);
+  });
+  updateProgress(menuKey);
+  document.getElementById('done-' + menuKey).classList.remove('show');
+}
+
+/* ── Progress ── */
+function updateProgress(menuKey) {
+  const m = menuKey || state.currentMenu;
+  const done = state.completed[m].size;
+  const total = MENU[m].length;
+  const pct = Math.round(done / total * 100);
+  document.getElementById('globalFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${done} / ${total} 完了`;
+  const badge = document.getElementById('progressBadge');
+  badge.textContent = pct + '%';
+  badge.className = 'badge' + (done === total ? ' done' : '');
+  document.getElementById('prog-' + m).style.width = pct + '%';
+}
+
+/* ── Timer ── */
+function startTimer(id) {
+  const ts = timerState[id];
+  if (ts.running) {
+    clearInterval(ts.interval); ts.running = false;
+    document.getElementById('timer-start-' + id).textContent = '▶'; return;
+  }
+  if (ts.remaining <= 0) resetTimer(id);
+  ts.running = true;
+  document.getElementById('timer-start-' + id).textContent = '⏸';
+  ts.interval = setInterval(() => tickTimer(id), 1000);
+}
+
+function tickTimer(id) {
+  const ts = timerState[id];
+  ts.remaining--;
+  updateTimerDisplay(id);
+  if (ts.remaining <= 0) {
+    clearInterval(ts.interval); ts.running = false;
+    document.getElementById('timer-start-' + id).textContent = '▶';
+    document.getElementById('timer-status-' + id).textContent = 'READY!';
+    document.getElementById('timer-' + id).className = 'timer-display done-color';
+    const ex = [...MENU.a, ...MENU.b].find(e => e.id === id);
+    showNotification('準備完了！ ' + (ex ? ex.name : ''));
+  }
+}
+
+function resetTimer(id) {
+  const ts = timerState[id];
+  clearInterval(ts.interval); ts.running = false; ts.remaining = ts.total;
+  document.getElementById('timer-start-' + id).textContent = '▶';
+  document.getElementById('timer-status-' + id).textContent = 'REST INTERVAL';
+  document.getElementById('timer-' + id).className = 'timer-display';
+  updateTimerDisplay(id);
+}
+
+function updateTimerDisplay(id) {
+  const ts = timerState[id];
+  const el = document.getElementById('timer-' + id);
+  if (!el) return;
+  const m = Math.floor(ts.remaining / 60), s = ts.remaining % 60;
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  const pct = ts.total > 0 ? ts.remaining / ts.total : 1;
+  const fill = document.getElementById('ring-fill-' + id);
+  if (fill) {
+    fill.style.strokeDashoffset = 220 * (1 - pct);
+    fill.style.stroke = (ts.remaining <= 10 && ts.remaining > 0) ? 'var(--accent2)' : 'var(--accent)';
+  }
+}
+
+function setInterval_(id, seconds) {
+  const ts = timerState[id];
+  clearInterval(ts.interval); ts.running = false; ts.total = seconds; ts.remaining = seconds;
+  document.getElementById('timer-start-' + id).textContent = '▶';
+  document.getElementById('timer-status-' + id).textContent = 'REST INTERVAL';
+  document.getElementById('timer-' + id).className = 'timer-display';
+  updateTimerDisplay(id);
+  [30,45,60,90,120].forEach(s => {
+    const el = document.getElementById(`ibtn-${id}-${s}`);
+    if (el) el.className = 'interval-btn' + (s === seconds ? ' selected' : '');
+  });
+}
+
+/* ── Notification ── */
+let notifTimer = null;
+function showNotification(msg) {
+  const el = document.getElementById('notification');
+  el.textContent = msg; el.classList.add('show');
+  if (notifTimer) clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+/* ── Init ── */
+function init() {
+  buildWeekGrid();
+  buildLists();
+
+  // Auto-select today's menu
+  const jsDay = new Date().getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  const todayMenu = DAY_MENU[todayIdx];
+  switchMenu(todayMenu === 'rest' ? 'a' : todayMenu);
+}
+
+init();
+</script>
+</body>
+</html>
