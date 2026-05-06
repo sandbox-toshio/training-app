@@ -192,9 +192,9 @@
   .tips-box { background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.15); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--accent); margin-top: 12px; }
   .tips-box strong { display: block; margin-bottom: 4px; font-size: 11px; letter-spacing: 1px; }
 
-  /* ── SETS & TIMER ── */
-  .sets-timer-section { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
-  .sets-tracker { flex: 1; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  /* ── SETS ── */
+  .card-sets-wrap { padding: 0 22px 14px; }
+  .sets-tracker { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
   .sets-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
   .sets-dots { display: flex; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
   .set-dot { width: 34px; height: 34px; border-radius: 8px; background: var(--card); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; transition: all 0.2s; }
@@ -216,10 +216,19 @@
   .complete-checkmark.show { display: flex; }
   .complete-checkmark svg { width: 20px; height: 20px; }
 
-  /* TIMER */
-  .timer-box { flex: 1; min-width: 190px; background: var(--timer-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; align-items: center; }
-  .timer-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; align-self: flex-start; }
-  .timer-display { font-size: 44px; font-weight: 800; letter-spacing: 2px; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 10px; font-family: 'Courier New', monospace; }
+  /* TIMER (compact, always visible — between header and body) */
+  .card-timer-wrap { padding: 0 22px 14px; }
+  .exercise-timer { background: var(--timer-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .exercise-timer .timer-ring { width: 52px; height: 52px; margin: 0; flex-shrink: 0; }
+  .exercise-timer .timer-ring circle { stroke-width: 6; }
+  .exercise-timer-info { display: flex; flex-direction: column; flex-shrink: 0; min-width: 80px; }
+  .exercise-timer .timer-display { font-size: 26px; line-height: 1.05; margin-bottom: 0; }
+  .exercise-timer .timer-status { font-size: 9px; margin: 3px 0 0; letter-spacing: 1.5px; }
+  .exercise-timer .timer-controls { width: auto; flex-shrink: 0; gap: 6px; }
+  .exercise-timer .btn-timer { padding: 7px 11px; font-size: 15px; }
+  .exercise-timer .interval-select-wrap { margin-top: 0; flex: 1; min-width: 160px; width: auto; gap: 4px; }
+  .exercise-timer .interval-btn { padding: 5px 2px; font-size: 10px; }
+  .timer-display { font-size: 26px; font-weight: 800; letter-spacing: 2px; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 10px; font-family: 'Courier New', monospace; }
   .timer-display.done-color { color: var(--green); }
   .timer-ring { width: 76px; height: 76px; margin: 0 auto 10px; }
   .timer-ring circle { fill: none; stroke-width: 5; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
@@ -253,8 +262,11 @@
     .day-badge { width: 24px; height: 24px; font-size: 12px; }
     .card-header { padding: 14px 16px; }
     .card-body { padding: 0 14px 18px; }
-    .timer-display { font-size: 36px; }
-    .sets-timer-section { flex-direction: column; }
+    .card-timer-wrap { padding: 0 14px 12px; }
+    .card-sets-wrap { padding: 0 14px 12px; }
+    .exercise-timer { padding: 9px 11px; gap: 10px; }
+    .exercise-timer .timer-display { font-size: 22px; }
+    .exercise-timer .interval-select-wrap { width: 100%; flex-basis: 100%; }
     .menu-tab .tab-sub { display: none; }
   }
 </style>
@@ -635,6 +647,47 @@ function buildCard(ex, menuKey) {
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
+      <div class="card-timer-wrap">
+        <div class="exercise-timer">
+          <svg class="timer-ring" viewBox="0 0 80 80">
+            <circle class="track" cx="40" cy="40" r="35"/>
+            <circle class="fill" id="ring-fill-${ex.id}" cx="40" cy="40" r="35"/>
+          </svg>
+          <div class="exercise-timer-info">
+            <div class="timer-display" id="timer-${ex.id}">00:${String(ex.rest).padStart(2,'0')}</div>
+            <div class="timer-status" id="timer-status-${ex.id}">REST INTERVAL</div>
+          </div>
+          <div class="timer-controls">
+            <button class="btn-timer start" id="timer-start-${ex.id}" onclick="startTimer('${ex.id}')">▶</button>
+            <button class="btn-timer" onclick="resetTimer('${ex.id}')">↺</button>
+          </div>
+          <div class="interval-select-wrap">
+            ${[30,45,60,90,120].map(s =>
+              `<div class="interval-btn ${s===ex.rest?'selected':''}" id="ibtn-${ex.id}-${s}" onclick="setInterval_('${ex.id}',${s})">${s}s</div>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="card-sets-wrap">
+        <div class="sets-tracker">
+          <div class="sets-label">セット管理</div>
+          <div class="sets-dots" id="dots-${ex.id}">${dotHTML}</div>
+          <div class="sets-actions">
+            <button class="btn btn-primary" onclick="completeNextSet('${ex.id}','${menuKey}')">次のセット完了</button>
+            <button class="btn btn-secondary" onclick="resetSets('${ex.id}')">リセット</button>
+          </div>
+          <button class="btn btn-complete" id="complete-btn-${ex.id}" onclick="markDone('${ex.id}','${menuKey}')" disabled>
+            ✓ この種目を完了
+          </button>
+          <div class="complete-checkmark" id="check-${ex.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/>
+            </svg>
+            完了済み
+            <button class="btn btn-undo" style="margin-left:auto" onclick="undoDone('${ex.id}','${menuKey}')">取り消し</button>
+          </div>
+        </div>
+      </div>
       <div class="card-body" id="body-${ex.id}">
         <div class="desc-section">
           <h4>動作イメージ</h4>
@@ -644,44 +697,6 @@ function buildCard(ex, menuKey) {
             ${ex.steps.map((s,i) => `<li><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}
           </ol>
           <div class="tips-box"><strong>POINT</strong>${ex.tip}</div>
-        </div>
-        <div class="sets-timer-section">
-          <div class="sets-tracker">
-            <div class="sets-label">セット管理</div>
-            <div class="sets-dots" id="dots-${ex.id}">${dotHTML}</div>
-            <div class="sets-actions">
-              <button class="btn btn-primary" onclick="completeNextSet('${ex.id}','${menuKey}')">次のセット完了</button>
-              <button class="btn btn-secondary" onclick="resetSets('${ex.id}')">リセット</button>
-            </div>
-            <button class="btn btn-complete" id="complete-btn-${ex.id}" onclick="markDone('${ex.id}','${menuKey}')" disabled>
-              ✓ この種目を完了
-            </button>
-            <div class="complete-checkmark" id="check-${ex.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/>
-              </svg>
-              完了済み
-              <button class="btn btn-undo" style="margin-left:auto" onclick="undoDone('${ex.id}','${menuKey}')">取り消し</button>
-            </div>
-          </div>
-          <div class="timer-box">
-            <div class="timer-label">インターバルタイマー</div>
-            <svg class="timer-ring" viewBox="0 0 80 80">
-              <circle class="track" cx="40" cy="40" r="35"/>
-              <circle class="fill" id="ring-fill-${ex.id}" cx="40" cy="40" r="35"/>
-            </svg>
-            <div class="timer-display" id="timer-${ex.id}">00:${String(ex.rest).padStart(2,'0')}</div>
-            <div class="timer-status" id="timer-status-${ex.id}">REST INTERVAL</div>
-            <div class="timer-controls">
-              <button class="btn-timer start" id="timer-start-${ex.id}" onclick="startTimer('${ex.id}')">▶</button>
-              <button class="btn-timer" onclick="resetTimer('${ex.id}')">↺</button>
-            </div>
-            <div class="interval-select-wrap">
-              ${[30,45,60,90,120].map(s =>
-                `<div class="interval-btn ${s===ex.rest?'selected':''}" id="ibtn-${ex.id}-${s}" onclick="setInterval_('${ex.id}',${s})">${s}s</div>`
-              ).join('')}
-            </div>
-          </div>
         </div>
       </div>
     </div>`;
@@ -897,7 +912,12 @@ function init() {
   const jsDay = new Date().getDay();
   const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
   const todayMenu = DAY_MENU[todayIdx];
-  switchMenu(todayMenu === 'rest' ? 'a' : todayMenu);
+  const activeMenu = todayMenu === 'rest' ? 'a' : todayMenu;
+  switchMenu(activeMenu);
+
+  // Auto-expand the first exercise card so the illustration and timer are visible above the fold
+  const firstId = MENU[activeMenu][0].id;
+  toggleCard(firstId, activeMenu);
 }
 
 init();
