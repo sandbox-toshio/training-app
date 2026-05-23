@@ -367,6 +367,89 @@
     z-index: 50; margin-top: 8px;
   }
 
+  /* MODE BTN VARIANT */
+  .mode-btn.manage { border-color: rgba(0,230,118,0.35); background: rgba(0,230,118,0.04); }
+  .mode-btn.manage:hover { box-shadow: 0 0 22px rgba(0,230,118,0.12); }
+  .mode-btn.manage .mode-icon { color: var(--green); background: rgba(0,230,118,0.1); }
+
+  /* WORD MANAGEMENT */
+  .manage-help {
+    background: var(--card); border: 1px dashed var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+    font-size: 12px; color: var(--muted); line-height: 1.7;
+  }
+  .manage-help strong { color: var(--text); font-weight: 700; }
+  .manage-unit {
+    margin-bottom: 18px;
+  }
+  .manage-unit-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 4px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .manage-unit-title { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: var(--accent); }
+  .manage-unit-meta { font-size: 11px; color: var(--muted); }
+  .manage-unit-meta strong { color: var(--text); }
+  .manage-row {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .manage-row.off { opacity: 0.55; }
+  .manage-row.mastered { border-left: 4px solid var(--green); }
+  .manage-row-content { flex: 1; min-width: 0; }
+  .manage-row-en { font-size: 15px; font-weight: 700; }
+  .manage-row-ja { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .manage-row-badges { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .manage-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 5px; padding: 2px 6px;
+    font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px;
+  }
+  .manage-badge.ej-ok { color: var(--green); border-color: rgba(0,230,118,0.4); }
+  .manage-badge.je-ok { color: var(--green); border-color: rgba(0,230,118,0.4); }
+  .manage-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+  /* TOGGLE SWITCH */
+  .toggle {
+    position: relative; width: 44px; height: 24px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 14px; cursor: pointer; flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .toggle::after {
+    content: ''; position: absolute;
+    top: 1px; left: 1px; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--muted);
+    transition: all 0.2s;
+  }
+  .toggle.on { background: rgba(0,230,118,0.15); border-color: var(--green); }
+  .toggle.on::after { left: 22px; background: var(--green); }
+  .toggle.busy { opacity: 0.5; pointer-events: none; }
+
+  .reset-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); border-radius: 8px;
+    padding: 6px 10px; font-size: 11px; font-weight: 600;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover { color: var(--orange); border-color: var(--orange); }
+  .reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 18px;
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 2000; display: none;
+  }
+  .toast.show { display: block; animation: fade 0.2s ease; }
+  .toast.ok  { border-color: var(--green); color: var(--green); }
+  .toast.err { border-color: var(--red);   color: var(--red); }
+
   /* STORAGE WARNING BANNER */
   .storage-banner {
     display: none;
@@ -488,6 +571,14 @@
           <div class="mode-meta">復習候補 <strong id="modeReviewCount">0</strong> 語</div>
         </div>
       </button>
+      <button class="mode-btn manage" data-action="go-words">
+        <div class="mode-icon">M</div>
+        <div>
+          <div class="mode-title">単語の管理</div>
+          <div class="mode-sub">出題ON/OFFの切替、卒業のリセット</div>
+          <div class="mode-meta">全 <strong id="modeAllCount">0</strong> 語</div>
+        </div>
+      </button>
     </div>
 
     <div class="settings-section">
@@ -506,13 +597,6 @@
         </div>
         <button class="settings-btn" id="editApiUrlBtn">変更</button>
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label">進捗をリセット</div>
-          <div class="settings-sub">この端末の全進捗を消去（Sheetsには反映しない）</div>
-        </div>
-        <button class="settings-btn danger" id="resetBtn">リセット</button>
-      </div>
     </div>
   </section>
 
@@ -520,6 +604,16 @@
   <section class="view" id="view-units">
     <div class="panel-label">単元を選ぶ</div>
     <div id="unitList"></div>
+  </section>
+
+  <!-- ===== WORD MANAGEMENT ===== -->
+  <section class="view" id="view-words">
+    <div class="panel-label">単語の管理</div>
+    <div class="manage-help">
+      <div><strong>出題ON</strong> をオフにするとセッションに出てこなくなります</div>
+      <div><strong>卒業をリセット</strong>すると5連続正解がクリアされ、再び出題対象に戻ります</div>
+    </div>
+    <div id="wordsManageList"></div>
   </section>
 
   <!-- ===== DIRECTION ===== -->
@@ -657,6 +751,9 @@
   </section>
 
 </main>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
 
 <!-- ===== SETTINGS MODAL ===== -->
 <div class="modal-backdrop" id="settingsModal">
@@ -840,8 +937,9 @@ function savePendingQueue(q) {
  * DATA LOAD — キャッシュ即起動 + 裏で fetch
  * ============================================================ */
 function normalizeRowsToWords(rows) {
+  // 出題ON/OFFに関わらず全単語を保持。出題フィルタは pickSessionWords / reviewCandidates で行う
   return rows
-    .filter(r => r.on && r.en && r.ja)
+    .filter(r => r.en && r.ja)
     .map(r => ({
       id: wordId(r.en, r.ja),
       unit: (r.unit || '(未分類)').trim(),
@@ -1052,9 +1150,10 @@ function updateStorageBanner() {
   el.classList.toggle('show', !state.storageOk);
 }
 
-function getUnits() {
+function getUnits({ includeOff = false } = {}) {
   const map = new Map();
   state.words.forEach(w => {
+    if (!includeOff && !w.on) return;
     if (!map.has(w.unit)) map.set(w.unit, []);
     map.get(w.unit).push(w);
   });
@@ -1072,9 +1171,11 @@ function isMastered(id, dir) {
  * STATS
  * ============================================================ */
 function computeStats() {
-  const total = state.words.length;
+  // 統計は「出題ON」の単語のみで計算
+  const onWords = state.words.filter(w => w.on);
+  const total = onWords.length;
   let mastered = 0, totalAns = 0, totalCorrect = 0;
-  state.words.forEach(w => {
+  onWords.forEach(w => {
     const p = progressFor(w.id);
     if (p.streakEJ >= MASTER_STREAK && p.streakJE >= MASTER_STREAK) mastered++;
     totalAns += p.totalEJ + p.totalJE;
@@ -1086,6 +1187,7 @@ function computeStats() {
 
 function reviewCandidates() {
   return state.words
+    .filter(w => w.on)
     .map(w => {
       const p = progressFor(w.id);
       const answered = p.totalEJ + p.totalJE;
@@ -1112,6 +1214,7 @@ function renderHome() {
   $('#modeUnitCount').textContent = units.length;
   $('#modeUnitWords').textContent = total;
   $('#modeReviewCount').textContent = reviewCandidates().length;
+  $('#modeAllCount').textContent = state.words.length;
 }
 
 /* ============================================================
@@ -1152,6 +1255,153 @@ function renderUnits() {
 }
 
 /* ============================================================
+ * WORD MANAGEMENT (view-words)
+ * ============================================================ */
+function renderWordsManage() {
+  const list = $('#wordsManageList');
+  list.innerHTML = '';
+  const units = getUnits({ includeOff: true });
+  if (units.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-title">単語がまだ取り込まれていません</div><div class="empty-sub">Sheetsから同期するか、ヘッダの「今すぐ同期」ボタンを押してください</div></div>`;
+    return;
+  }
+  units.forEach(u => {
+    const onCount = u.words.filter(w => w.on).length;
+    const masteredCount = u.words.filter(w => {
+      const p = progressFor(w.id);
+      return p.streakEJ >= MASTER_STREAK && p.streakJE >= MASTER_STREAK;
+    }).length;
+
+    const unitEl = document.createElement('div');
+    unitEl.className = 'manage-unit';
+    unitEl.innerHTML = `
+      <div class="manage-unit-header">
+        <div class="manage-unit-title">${escapeHTML(u.name)}</div>
+        <div class="manage-unit-meta">出題 <strong>${onCount}</strong>/${u.words.length} ・ 卒業 <strong>${masteredCount}</strong></div>
+      </div>
+    `;
+
+    u.words.forEach(w => {
+      const p = progressFor(w.id);
+      const ejOk = p.streakEJ >= MASTER_STREAK;
+      const jeOk = p.streakJE >= MASTER_STREAK;
+      const mastered = ejOk && jeOk;
+      const acc = (p.totalEJ + p.totalJE) > 0
+        ? Math.round(100 * (p.correctEJ + p.correctJE) / (p.totalEJ + p.totalJE)) + '%'
+        : '—';
+
+      const row = document.createElement('div');
+      row.className = 'manage-row' + (w.on ? '' : ' off') + (mastered ? ' mastered' : '');
+      row.dataset.id = w.id;
+      const jaDisplay = escapeHTML(w.jaList.join(' / '));
+      row.innerHTML = `
+        <div class="manage-row-content">
+          <div class="manage-row-en">${escapeHTML(w.en)}</div>
+          <div class="manage-row-ja">${jaDisplay}</div>
+          <div class="manage-row-badges">
+            <span class="manage-badge ${ejOk ? 'ej-ok' : ''}">英→日 ${p.streakEJ}/5</span>
+            <span class="manage-badge ${jeOk ? 'je-ok' : ''}">日→英 ${p.streakJE}/5</span>
+            <span class="manage-badge">正答率 ${acc}</span>
+          </div>
+        </div>
+        <div class="manage-actions">
+          <button class="reset-btn" data-act="reset" ${(p.streakEJ === 0 && p.streakJE === 0) ? 'disabled' : ''}>卒業リセット</button>
+          <div class="toggle ${w.on ? 'on' : ''}" data-act="toggle" role="switch" aria-checked="${w.on}" aria-label="出題ON/OFF"></div>
+        </div>
+      `;
+
+      row.querySelector('[data-act="toggle"]').addEventListener('click', () => onToggleWordOn(w.id));
+      row.querySelector('[data-act="reset"]').addEventListener('click', () => onResetWordProgress(w.id));
+      unitEl.appendChild(row);
+    });
+    list.appendChild(unitEl);
+  });
+}
+
+async function onToggleWordOn(wordId) {
+  const w = state.words.find(x => x.id === wordId);
+  if (!w) return;
+  const next = !w.on;
+  // 楽観的UI更新
+  w.on = next;
+  renderWordsManage();
+  // Sheetsに反映
+  const ok = await postToServer({
+    word_flags: [{ en: w.en, ja: w.ja, on: next }]
+  });
+  if (!ok) {
+    // ロールバック
+    w.on = !next;
+    renderWordsManage();
+    showToast('出題ON/OFFの保存に失敗しました', 'err');
+  } else {
+    // キャッシュ更新（次回起動時の整合性のため）
+    try {
+      const rawRows = state.words.map(x => ({ unit: x.unit, en: x.en, ja: x.ja, on: x.on }));
+      safeWrite(WORDS_CACHE_KEY, JSON.stringify(rawRows));
+    } catch {}
+    showToast(next ? '出題ONにしました' : '出題OFFにしました', 'ok');
+  }
+}
+
+async function onResetWordProgress(wordId) {
+  const w = state.words.find(x => x.id === wordId);
+  if (!w) return;
+  if (!confirm(`${w.en}（${w.jaList[0]}）の卒業をリセットしますか？\n連続正解カウントが0に戻り、再び出題対象になります。`)) return;
+  // 楽観的UI更新
+  const p = progressFor(w.id);
+  const backup = { streakEJ: p.streakEJ, streakJE: p.streakJE, lastWrongAt: p.lastWrongAt };
+  p.streakEJ = 0;
+  p.streakJE = 0;
+  p.lastWrongAt = 0;
+  saveProgress();
+  renderWordsManage();
+  // Sheetsに反映
+  const ok = await postToServer({
+    progress_resets: [{ en: w.en, ja: w.ja }]
+  });
+  if (!ok) {
+    Object.assign(p, backup);
+    saveProgress();
+    renderWordsManage();
+    showToast('卒業リセットの保存に失敗しました', 'err');
+  } else {
+    showToast('卒業をリセットしました', 'ok');
+  }
+}
+
+async function postToServer(body) {
+  if (!isConfigured()) {
+    showToast('Sheets未設定のため保存できません', 'err');
+    return false;
+  }
+  try {
+    const res = await fetch(state.settings.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: state.settings.apiToken, ...body }),
+      redirect: 'follow',
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'unknown');
+    return true;
+  } catch (err) {
+    console.warn('postToServer failed:', err);
+    return false;
+  }
+}
+
+let toastTimer = null;
+function showToast(msg, kind = 'ok') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + kind;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 2200);
+}
+
+/* ============================================================
  * DIRECTION
  * ============================================================ */
 let pendingMode = null;
@@ -1173,7 +1423,7 @@ function pickSessionWords(ctx, dir) {
   const effectiveDir = (dir === 'je-note') ? 'je' : (dir === 'ej-flash') ? 'ej' : dir;
   let pool = [];
   if (ctx.mode === 'unit') {
-    pool = state.words.filter(w => w.unit === ctx.unitName);
+    pool = state.words.filter(w => w.unit === ctx.unitName && w.on);
   } else if (ctx.mode === 'review') {
     pool = reviewCandidates().map(x => x.w);
   }
@@ -1545,7 +1795,8 @@ function goBack() {
   if (current === 'view-direction') { showView('view-units', false); return; }
   if (inQuiz)                       { renderHome(); showView('view-home', false); return; }
   if (current === 'view-result')    { renderHome(); showView('view-home', false); return; }
-  if (current === 'view-units')     { showView('view-home', false); return; }
+  if (current === 'view-units')     { renderHome(); showView('view-home', false); return; }
+  if (current === 'view-words')     { renderHome(); showView('view-home', false); return; }
   showView('view-home', false);
 }
 
@@ -1573,6 +1824,7 @@ document.querySelectorAll('[data-action="go-review"]').forEach(b => b.addEventLi
   if (list.length === 0) { alert('復習対象の単語がまだありません。\nまず単元モードで挑戦してみよう'); return; }
   openDirectionSelect({ mode: 'review' });
 }));
+document.querySelectorAll('[data-action="go-words"]').forEach(b => b.addEventListener('click', () => { renderWordsManage(); showView('view-words'); }));
 document.querySelectorAll('[data-action="go-home"]').forEach(b => b.addEventListener('click', () => { renderHome(); showView('view-home', false); }));
 
 $('#backBtn').addEventListener('click', goBack);
@@ -1594,14 +1846,6 @@ $('#qInput').addEventListener('keydown', e => {
 $('#againBtn').addEventListener('click', () => {
   if (state.session) startSession(state.session.ctx, state.session.dir);
 });
-$('#resetBtn').addEventListener('click', () => {
-  if (!confirm('この端末の進捗を全てリセットします。\n（Sheetsには反映しません。後で同期すればSheetsから戻ります）\nよろしいですか？')) return;
-  state.progress = {};
-  saveProgress();
-  savePendingQueue([]);
-  renderHome();
-});
-
 $('#syncNowBtn').addEventListener('click', async () => {
   if (!isConfigured()) { openSettingsModal({ initial: false }); return; }
   // 未送信があれば先に送る → その後に取得
