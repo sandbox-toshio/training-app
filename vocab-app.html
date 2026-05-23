@@ -367,6 +367,22 @@
     z-index: 50; margin-top: 8px;
   }
 
+  /* STORAGE WARNING BANNER */
+  .storage-banner {
+    display: none;
+    background: rgba(255,82,82,0.12);
+    border-bottom: 1.5px solid rgba(255,82,82,0.4);
+    padding: 14px 18px;
+  }
+  .storage-banner.show { display: block; animation: fade 0.25s ease; }
+  .storage-banner-inner { max-width: 720px; margin: 0 auto; }
+  .storage-banner-title {
+    font-size: 14px; font-weight: 800; color: var(--red);
+    margin-bottom: 6px; letter-spacing: 0.5px;
+  }
+  .storage-banner-sub { font-size: 12px; color: var(--text); line-height: 1.7; }
+  .storage-banner-sub strong { color: var(--red); }
+
   /* MODAL */
   .modal-backdrop {
     display: none;
@@ -418,6 +434,18 @@
     <span class="badge demo" id="sourceBadge">DEMO DATA</span>
   </div>
 </header>
+
+<!-- localStorage 書き込み不可時の警告バナー -->
+<div class="storage-banner" id="storageBanner">
+  <div class="storage-banner-inner">
+    <div class="storage-banner-title">⚠️ この画面では設定を保存できません</div>
+    <div class="storage-banner-sub">
+      Safari の <strong>プライベートブラウジング</strong> や <strong>シークレットタブ</strong> で開いている可能性があります。<br>
+      ・通常のタブで開き直す、または<br>
+      ・共有ボタン → <strong>「ホーム画面に追加」</strong> → アイコンから起動 してください
+    </div>
+  </div>
+</div>
 
 <main>
 
@@ -725,6 +753,7 @@ const state = {
   settings: {},       // { apiUrl, lastSyncedAt, lastFetchAt }
   syncStatus: 'idle', // 'idle' | 'fetching' | 'syncing' | 'error' | 'offline'
   syncMessage: '',
+  storageOk: true,    // localStorageが正常に書き込めるか（プライベートブラウジング検出）
 };
 
 function wordId(en, ja) { return en + '__' + ja; }
@@ -736,7 +765,41 @@ function loadProgress() {
   } catch { state.progress = {}; }
 }
 function saveProgress() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress)); } catch {}
+  return safeWrite(STORAGE_KEY, JSON.stringify(state.progress));
+}
+
+/* ============================================================
+ * STORAGE AVAILABILITY — Safariのプライベートブラウジング等で
+ * localStorageが使えない/書き込めない環境を検出する
+ * ============================================================ */
+function checkStorageAvailable() {
+  try {
+    const k = '__vocab_storage_test__';
+    localStorage.setItem(k, '1');
+    const ok = localStorage.getItem(k) === '1';
+    localStorage.removeItem(k);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 書き込み + 読み返し検証つきの localStorage 書き込み
+// 成功なら true / 失敗なら false を返し、UI側のバナーを更新する
+function safeWrite(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    // 書けたつもりでも読み返せないケース（quota exceeded等）を検出
+    if (localStorage.getItem(key) !== value) throw new Error('verify-failed');
+    state.storageOk = true;
+    updateStorageBanner();
+    return true;
+  } catch (e) {
+    console.warn('safeWrite failed for', key, e);
+    state.storageOk = false;
+    updateStorageBanner();
+    return false;
+  }
 }
 function progressFor(id) {
   if (!state.progress[id]) {
@@ -761,7 +824,7 @@ function isConfigured() {
   return !!(state.settings.apiUrl && state.settings.apiToken);
 }
 function saveSettings() {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch {}
+  return safeWrite(SETTINGS_KEY, JSON.stringify(state.settings));
 }
 function loadPendingQueue() {
   try {
@@ -770,7 +833,7 @@ function loadPendingQueue() {
   } catch { return []; }
 }
 function savePendingQueue(q) {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(q)); } catch {}
+  return safeWrite(PENDING_KEY, JSON.stringify(q));
 }
 
 /* ============================================================
@@ -828,7 +891,7 @@ async function fetchFromServer({ silent = false } = {}) {
     // 単語マスタを反映
     const rows = (data.words || []).map(w => ({ unit: w.unit, en: w.en, ja: w.ja, on: w.on }));
     state.words = normalizeRowsToWords(rows);
-    try { localStorage.setItem(WORDS_CACHE_KEY, JSON.stringify(rows)); } catch {}
+    safeWrite(WORDS_CACHE_KEY, JSON.stringify(rows));
 
     // 進捗を反映（サーバ優先で取り込む。未送信queueは別途送信）
     const serverProgress = data.progress || [];
@@ -982,6 +1045,11 @@ function rerenderActive() {
   const current = [...document.querySelectorAll('.view.show')][0]?.id;
   if (current === 'view-home')  renderHome();
   if (current === 'view-units') renderUnits();
+}
+function updateStorageBanner() {
+  const el = document.getElementById('storageBanner');
+  if (!el) return;
+  el.classList.toggle('show', !state.storageOk);
 }
 
 function getUnits() {
@@ -1601,10 +1669,15 @@ async function onModalSave() {
     const res = await fetch(testUrl, { method: 'GET', redirect: 'follow' });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'unknown');
-    // 成功: 保存
+    // テスト接続は成功 → 保存を試みる
     state.settings.apiUrl = url;
     state.settings.apiToken = token;
-    saveSettings();
+    const saved = saveSettings();
+    if (!saved) {
+      // 接続自体は通ったが、ローカル保存ができていない
+      showModalErr('接続は成功しましたが、設定をこの端末に保存できません。\nSafariのプライベートブラウジングを解除する、または共有→「ホーム画面に追加」したアイコンから起動してください。');
+      return;
+    }
     closeSettingsModal();
     updateApiUrlText();
     updateSyncBadge();
@@ -1640,6 +1713,10 @@ $('#modalApiToken').addEventListener('keydown', e => { if (e.key === 'Enter') on
  * INIT
  * ============================================================ */
 async function init() {
+  // localStorage が使えるかを最初に判定（Safari プライベートブラウジング検出）
+  state.storageOk = checkStorageAvailable();
+  updateStorageBanner();
+
   loadSettings();
   loadProgress();
   loadWords();        // キャッシュ or ダミーで即時表示
