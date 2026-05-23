@@ -74,28 +74,108 @@ function doGet(e) {
 }
 
 /* ============================================================
- *  POST — セッション終了時にアプリから呼ばれる。進捗を upsert
+ *  POST — アプリから呼ばれる。複数のアクションを1リクエストで処理可能。
  *  body 例:
- *    { "token":"xxxx",
+ *    {
+ *      "token": "xxxx",
+ *
+ *      // セッション終了時の進捗 upsert（既存）
  *      "updates": [
  *        { "en":"teacher", "ja":"先生/教師",
  *          "total_ej":12, "correct_ej":10, "streak_ej":3,
  *          "total_je":8,  "correct_je":7,  "streak_je":5,
- *          "last_wrong":"2026-05-20T12:34:56Z" },
- *        ...
- *      ] }
+ *          "last_wrong":"2026-05-20T12:34:56Z" }
+ *      ],
+ *
+ *      // 単語の出題ON/OFFを切り替え（単語タブのD列を書き換え）
+ *      "word_flags": [
+ *        { "en":"teacher", "ja":"先生/教師", "on": false }
+ *      ],
+ *
+ *      // 卒業状態をリセット（streak_ej / streak_je を 0 にする）
+ *      "progress_resets": [
+ *        { "en":"teacher", "ja":"先生/教師" }
+ *      ]
+ *    }
  * ============================================================ */
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     requireToken_(e, body);
-    const updates = Array.isArray(body.updates) ? body.updates : [];
     const ss = SpreadsheetApp.getActive();
-    const result = upsertProgress(ss, updates);
-    return jsonResponse({ ok: true, ...result });
+    const result = { ok: true };
+
+    if (Array.isArray(body.updates) && body.updates.length > 0) {
+      Object.assign(result, upsertProgress(ss, body.updates));
+    }
+    if (Array.isArray(body.word_flags) && body.word_flags.length > 0) {
+      result.word_flags = updateWordFlags(ss, body.word_flags);
+    }
+    if (Array.isArray(body.progress_resets) && body.progress_resets.length > 0) {
+      result.progress_resets = resetProgress(ss, body.progress_resets);
+    }
+    return jsonResponse(result);
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err) });
   }
+}
+
+/* ============================================================
+ *  単語タブ D列「出題ON」の更新
+ * ============================================================ */
+function updateWordFlags(ss, flags) {
+  const sheet = ss.getSheetByName(WORDS_TAB);
+  if (!sheet) throw new Error('「' + WORDS_TAB + '」タブが見つかりません');
+  const values = sheet.getDataRange().getValues();
+  // 0:単元 1:英単語 2:意味 3:出題ON
+  let updated = 0, notFound = [];
+  flags.forEach(f => {
+    let hit = false;
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][1]).trim() === String(f.en).trim() &&
+          String(values[i][2]).trim() === String(f.ja).trim()) {
+        sheet.getRange(i + 1, 4).setValue(!!f.on);
+        updated++;
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) notFound.push(f.en + '/' + f.ja);
+  });
+  return { updated, notFound };
+}
+
+/* ============================================================
+ *  進捗タブの streak をリセット（total/correct は残す）
+ * ============================================================ */
+function resetProgress(ss, items) {
+  const sheet = ensureProgressSheet(ss);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(String);
+  const enIdx = headers.indexOf('en');
+  const jaIdx = headers.indexOf('ja');
+  const ejIdx = headers.indexOf('streak_ej');
+  const jeIdx = headers.indexOf('streak_je');
+  const uaIdx = headers.indexOf('updated_at');
+  const lwIdx = headers.indexOf('last_wrong');
+  if (enIdx < 0 || jaIdx < 0) throw new Error('進捗タブのヘッダに en/ja がありません');
+
+  const now = new Date().toISOString();
+  let reset = 0;
+  items.forEach(it => {
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][enIdx]) === String(it.en) &&
+          String(values[i][jaIdx]) === String(it.ja)) {
+        if (ejIdx >= 0) sheet.getRange(i + 1, ejIdx + 1).setValue(0);
+        if (jeIdx >= 0) sheet.getRange(i + 1, jeIdx + 1).setValue(0);
+        if (lwIdx >= 0) sheet.getRange(i + 1, lwIdx + 1).setValue('');
+        if (uaIdx >= 0) sheet.getRange(i + 1, uaIdx + 1).setValue(now);
+        reset++;
+        break;
+      }
+    }
+  });
+  return { reset };
 }
 
 /* ============================================================
